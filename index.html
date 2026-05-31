@@ -1,0 +1,2097 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rigenera Dashboard Investimenti</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- React & Babel CDNs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js" crossorigin></script>
+
+  <style>
+    /* Clean Styling Reset */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Core Variables */
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --border: #2a2d3a;
+      --accent: #6c63ff;
+      --accentB: #4ecdc4;
+      --accentC: #ff6b6b;
+      --text: #e8eaf0;
+      --muted: #8b8fa8;
+      --green: #4ade80;
+      --red: #f87171;
+      
+      --bper: #00703c;
+      --med: #e4002b;
+      --poste: #003087;
+      --yellow: #fbbf24;
+      --pink: #f472b6;
+      --gray: #94a3b8;
+      
+      --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      --font-main: 'Inter', system-ui, sans-serif;
+      --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    /* Light Theme Overrides */
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #5b54e0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-main);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.5;
+      padding-bottom: 60px;
+      transition: background-color 0.3s var(--transition), color 0.3s var(--transition);
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--card);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--muted);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* Print CSS */
+    @media print {
+      .no-print, button, .btn, .no-print-section {
+        display: none !important;
+      }
+      body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        padding: 0 !important;
+      }
+      .container {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+        gap: 20px !important;
+      }
+      .card, table, tr, td, th {
+        background-color: #ffffff !important;
+        border-color: #cccccc !important;
+        color: #000000 !important;
+        box-shadow: none !important;
+      }
+      pre {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+        border: none !important;
+      }
+    }
+
+    /* Modal Animation Keyframes */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .spinner {
+      animation: spin 1s linear infinite;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      border-top-color: #6c63ff;
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // --- DATI ORIGINALI ---
+    const BASE_TITOLI_RAW = [
+      // ── BPER ──────────────────────────────────────────────────────────────────
+      { id:1,  banca:"BPER", nome:"Arca Bb",               isin:"IT0000380003", asset:"Obbligazionario",  quote:203.176,   investito:10443.86,  valore:12163.52 },
+      { id:2,  banca:"BPER", nome:"Arca Bond Corp",         isin:"IT0003021990", asset:"Obbligazionario",  quote:0,         investito:0,         valore:0        }, // rimborsato
+      { id:3,  banca:"BPER", nome:"Arca Bond P Emerg P",    isin:"IT0001248373", asset:"Obbligazionario",  quote:0,         investito:0,         valore:0        }, // rimborsato
+      { id:4,  banca:"BPER", nome:"Arca Ced Att 26 R",      isin:"IT0005494601", asset:"Obbligazionario",  quote:4999.3,    investito:24611.55,  valore:26001.36 },
+      { id:5,  banca:"BPER", nome:"Arca Dinamico P",        isin:"IT0003956239", asset:"Bilanciato/Misto", quote:1336.451,  investito:10350.81,  valore:12219.17 },
+      { id:6,  banca:"BPER", nome:"Arca Equilibrio P",      isin:"IT0003956197", asset:"Bilanciato/Misto", quote:1921.234,  investito:12368.90,  valore:14149.89 },
+      { id:7,  banca:"BPER", nome:"Arca Ft Ced Pl 30 3r",   isin:"IT0005635294", asset:"Obbligazionario",  quote:3999.3,    investito:20040.49,  valore:20040.49 },
+      { id:8,  banca:"BPER", nome:"Arca Obb Europa",        isin:"IT0001248324", asset:"Obbligazionario",  quote:1911.765,  investito:22145.89,  valore:25653.89 },
+      { id:9,  banca:"BPER", nome:"Arca Oht U590 30 R",     isin:"IT0005635237", asset:"Bilanciato/Misto", quote:1999.3,    investito:9996.50,   valore:10248.41 },
+      { id:10, banca:"BPER", nome:"Arca Oxy Plus 50 Acc",   isin:"IT0005106718", asset:"Bilanciato/Misto", quote:1642.763,  investito:9992.93,   valore:11160.93 },
+      { id:11, banca:"BPER", nome:"Arca R Val Re 27 2",     isin:"IT0005483430", asset:"Bilanciato/Misto", quote:5999.3,    investito:29996.50,  valore:36835.70 },
+      { id:12, banca:"BPER", nome:"Arca Ri Div Bond P",     isin:"IT0000380029", asset:"Obbligazionario",  quote:2137.921,  investito:24128.58,  valore:27361.11 },
+      { id:13, banca:"BPER", nome:"Arca Te",                isin:"IT0000384641", asset:"Bilanciato/Misto", quote:996.922,   investito:23607.11,  valore:26493.20 },
+      { id:14, banca:"BPER", nome:"Arca Val Re 27 3 R",     isin:"IT0005494643", asset:"Bilanciato/Misto", quote:3999.3,    investito:19996.50,  valore:25579.52 },
+      { id:15, banca:"BPER", nome:"Bper Gl Cv Bond",        isin:"LU0079134363", asset:"Obbligazionario",  quote:41.871,    quoteOriginali:66.871, investito:13308.67, valore:11718.61 }, // parziale
+      { id:16, banca:"BPER", nome:"Bper Global Bond",       isin:"LU0083741626", asset:"Obbligazionario",  quote:38.209,    investito:6461.22,   valore:6403.45  },
+      { id:17, banca:"BPER", nome:"Etica Bilanciato P",     isin:"IT0003409213", asset:"Bilanciato/Misto", quote:1296.056,  investito:17513.60,  valore:20371.41 },
+      { id:18, banca:"BPER", nome:"Etica Red Bill Crd P",   isin:"IT0005117558", asset:"Obbligazionario",  quote:4425.670,  investito:21942.47,  valore:21203.38 },
+      { id:19, banca:"BPER", nome:"C/C BPER",               isin:null,           asset:"Liquidità",        quote:null,      investito:6673.12,   valore:6673.12  },
+
+      // ── MEDIOLANUM ────────────────────────────────────────────────────────────
+      { id:20, banca:"Mediolanum", nome:"MBB Convertibile Strategy",          isin:"IE00B8C2R429", asset:"Obbligazionario", quote:1574.830,  investito:9000.15,  valore:9932.44  },
+      { id:21, banca:"Mediolanum", nome:"MBB Emerging Markets Fixed Income",  isin:"IE00BJYLJB50", asset:"Obbligazionario", quote:2165.710,  investito:8998.53,  valore:9769.52  },
+      { id:22, banca:"Mediolanum", nome:"MBB Euro Fixed Income",              isin:"IE00B8C2R429", asset:"Obbligazionario", quote:566.115,   investito:3510.48,  valore:3510.48  }, // nuovo
+      { id:23, banca:"Mediolanum", nome:"MBB Global Sustainable Bond",        isin:"IE000WHTCTA3", asset:"Obbligazionario", quote:0,         investito:0,        valore:0        }, // rimborsato
+      { id:24, banca:"Mediolanum", nome:"MBB Circular Economy",               isin:"IE000ACFO6B6", asset:"Azionario",       quote:3770.740,  investito:17003.72, valore:18657.64 },
+      { id:25, banca:"Mediolanum", nome:"MBB Dynamic Intl Value Opp.",        isin:"IE00BYZ2Y955", asset:"Azionario",       quote:1078.757,  quoteOriginali:2237.310, investito:13890.99, valore:9202.88 }, // parziale
+      { id:26, banca:"Mediolanum", nome:"MBB Global Leaders",                 isin:"IE00BJYLJ823", asset:"Azionario",       quote:2448.960,  investito:14477.49, valore:17500.30 },
+      { id:27, banca:"Mediolanum", nome:"MBB Morgan Stanley Global Sel.",     isin:"IE00B2NLMT64", asset:"Azionario",       quote:1462.448,  quoteOriginali:1622.860, investito:13648.25, valore:16689.46 }, // parziale
+      { id:28, banca:"Mediolanum", nome:"Challenge Energy Equity Evol.",      isin:"IE0004460683", asset:"Azionario",       quote:590.510,   investito:5497.65,  valore:5845.43  },
+      { id:29, banca:"Mediolanum", nome:"Challenge Healthcare Equity Evol.",  isin:"IE0004479642", asset:"Azionario",       quote:0,         investito:0,        valore:0        }, // rimborsato
+      { id:30, banca:"Mediolanum", nome:"Challenge Industrials & Materials",  isin:"IE0004462408", asset:"Azionario",       quote:397.410,   investito:4502.26,  valore:6276.74  },
+      { id:31, banca:"Mediolanum", nome:"Challenge International Equity",     isin:"IE0032082988", asset:"Azionario",       quote:420.460,   investito:4730.18,  valore:6076.50  },
+      { id:32, banca:"Mediolanum", nome:"Challenge North American Equity",    isin:"IE00B6072284", asset:"Azionario",       quote:317.200,   investito:4500.31,  valore:6092.48  },
+      { id:33, banca:"Mediolanum", nome:"MBB Global Small Cap",               isin:"IE00BJYLJG06", asset:"Azionario",       quote:895.130,   investito:5000.46,  valore:6222.95  },
+      { id:34, banca:"Mediolanum", nome:"Mediolanum Energy Transition",       isin:"IE000V4RVQ80", asset:"Azionario",       quote:1143.910,  investito:4669.44,  valore:6323.52  },
+      { id:35, banca:"Mediolanum", nome:"Mediolanum Future Nutrition",        isin:"IE0000DBVC71", asset:"Azionario",       quote:0,         investito:0,        valore:0        }, // rimborsato
+      { id:36, banca:"Mediolanum", nome:"Mediolanum Global Equity Style",     isin:"IE000TCXNA99", asset:"Azionario",       quote:1666.890,  investito:10009.67, valore:10609.74 },
+      { id:37, banca:"Mediolanum", nome:"Mediolanum India Opportunities",     isin:"IE000K6M6613", asset:"Azionario",       quote:1481.030,  investito:9999.91,  valore:8345.59  },
+      { id:38, banca:"Mediolanum", nome:"Polizza Intelligent Life Plan",      isin:null,           asset:"Polizze",         quote:null,      investito:43598.50, valore:43598.50 },
+      { id:39, banca:"Mediolanum", nome:"C/C Mediolanum",                     isin:null,           asset:"Liquidità",       quote:null,      investito:6483.26,  valore:6483.26  },
+
+      // ── POSTE ─────────────────────────────────────────────────────────────────
+      { id:40, banca:"Poste", nome:"Poste Progetto Dinamico Bonus", isin:null, asset:"Polizze",   quote:null, investito:30287.18, valore:33402.21 },
+      { id:41, banca:"Poste", nome:"Poste Domani per Te Plus",      isin:null, asset:"Polizze",   quote:null, investito:20000.00, valore:20587.73 },
+      { id:42, banca:"Poste", nome:"Libretto Smart Poste",          isin:null, asset:"Liquidità", quote:null, investito:2335.65,  valore:2335.65  },
+    ];
+
+    const BASE_TITOLI = BASE_TITOLI_RAW.filter(t => t.valore > 0);
+
+    // --- CALC TITOLO HELPER (State initializer) ---
+    const calcTitolo = (t) => {
+      const investitoOriginale = t.investitoOriginale !== undefined ? t.investitoOriginale : t.investito;
+      let investito = investitoOriginale;
+      
+      if (t.quoteOriginali && t.quote !== null && t.quoteOriginali > 0) {
+        investito = investitoOriginale * (t.quote / t.quoteOriginali);
+        investito = Math.round((investito + Number.EPSILON) * 100) / 100;
+      }
+      
+      const plus = Math.round((t.valore - investito + Number.EPSILON) * 100) / 100;
+      const pct = investito > 0 ? (plus / investito) * 100 : 0;
+      
+      return {
+        ...t,
+        investitoOriginale,
+        investito,
+        plus,
+        pct
+      };
+    };
+
+    // --- AGENTS DEFINITION (Copied from structural modules) ---
+    
+    // FinanceAgent Object
+    const FinanceAgent = {
+      validate: (item, logs = []) => {
+        if (!item) {
+          logs.push("⚠️ Rilevato record nullo o indefinito. Escluso.");
+          return false;
+        }
+
+        const nome = item.nome || "";
+        
+        // Check for sub-totals or totals
+        if (
+          nome.toLowerCase().includes("totale") || 
+          nome.toLowerCase().includes("subtotale") || 
+          nome.toLowerCase().includes("summary")
+        ) {
+          logs.push(`⚠️ Ho escluso la riga "${nome}" (ID: ${item.id}) perché è un subtotale o totale di riepilogo.`);
+          return false;
+        }
+
+        // Check if value is null
+        if (item.valore === undefined || item.valore === null) {
+          logs.push(`⚠️ Ho escluso il record "${nome}" (ID: ${item.id}) perché privo di valore attuale.`);
+          return false;
+        }
+
+        // Check if value is zero (reimbursed)
+        if (parseFloat(item.valore) === 0) {
+          logs.push(`ℹ️ Ho escluso la riga "${nome}" (ID: ${item.id}) perché il valore attuale è zero (rimborsato/dismesso).`);
+          return false;
+        }
+
+        // Check numeric validity
+        if (isNaN(item.investito) || isNaN(item.valore)) {
+          logs.push(`⚠️ Ho escluso il record "${nome}" (ID: ${item.id}) per ambiguità nei dati numerici (NaN).`);
+          return false;
+        }
+
+        if (item.investito < 0 || item.valore < 0) {
+          logs.push(`⚠️ Ho escluso il record "${nome}" (ID: ${item.id}) perché presenta valori monetari negativi.`);
+          return false;
+        }
+
+        return true;
+      },
+
+      process: (data) => {
+        const logs = [];
+        const errors = [];
+        const active = [];
+
+        logs.push("🚀 FinanceAgent: Avvio calcoli ed elaborazione dei dati di portafoglio...");
+
+        if (!Array.isArray(data)) {
+          logs.push("❌ Errore critico: I dati in ingresso non sono in formato Array.");
+          return { active: [], logs, errors: ["I dati in ingresso devono essere un array."] };
+        }
+
+        data.forEach(item => {
+          const isValid = FinanceAgent.validate(item, logs);
+          if (!isValid) return;
+
+          // Proportional scaling for partial reimbursements
+          const investitoOriginale = item.investitoOriginale !== undefined ? item.investitoOriginale : item.investito;
+          let investitoResiduo = investitoOriginale;
+          if (item.quoteOriginali && item.quote !== null && item.quoteOriginali > 0) {
+            const quoteAttuali = item.quote;
+            const quoteOriginali = item.quoteOriginali;
+            const ratio = quoteAttuali / quoteOriginali;
+            investitoResiduo = investitoOriginale * ratio;
+            
+            // Precise rounding to cent
+            investitoResiduo = Math.round((investitoResiduo + Number.EPSILON) * 100) / 100;
+
+            logs.push(`🔄 Titolo ID ${item.id} ("${item.nome}"): Rilevato rimborso parziale. Quote attuali/originali: ${quoteAttuali}/${quoteOriginali}. Capitale investito residuo ricalcolato: € ${investitoResiduo.toFixed(2)}.`);
+          }
+
+          // Calculations precise to the cent
+          const plus = Math.round((item.valore - investitoResiduo + Number.EPSILON) * 100) / 100;
+          const pct = investitoResiduo > 0 ? (plus / investitoResiduo) * 100 : 0;
+
+          active.push({
+            ...item,
+            investitoOriginale,
+            investito: investitoResiduo,
+            plus,
+            pct
+          });
+        });
+
+        logs.push(`✅ FinanceAgent: Elaborazione completata con successo. Titoli attivi: ${active.length}/${data.length}.`);
+        return { active, logs, errors };
+      }
+    };
+
+    // UIAgent Object
+    const UIAgent = {
+      showLoader: (active, message = "Elaborazione dati in corso...") => {
+        if (!active) return null;
+        return (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(15, 17, 23, 0.8)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1100,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px'
+          }}>
+            <span className="spinner" />
+            <p style={{ fontWeight: '600', fontSize: '15px', color: '#ffffff', fontFamily: 'var(--font-main)' }}>
+              {message}
+            </p>
+          </div>
+        );
+      },
+
+      renderTable: ({ filteredTitoli, fmtEUR, badges, handleAICall }) => {
+        return (
+          <div style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'rgba(0,0,0,0.02)' }}>
+                  <th style={{ padding: '16px' }}>Nome</th>
+                  <th style={{ padding: '16px' }}>ISIN</th>
+                  <th style={{ padding: '16px' }}>Asset</th>
+                  <th style={{ padding: '16px', textAlign: 'right' }}>Quote</th>
+                  <th style={{ padding: '16px', textAlign: 'right' }}>Investito</th>
+                  <th style={{ padding: '16px', textAlign: 'right' }}>Valore</th>
+                  <th style={{ padding: '16px', textAlign: 'right' }}>Plus €</th>
+                  <th style={{ padding: '16px', textAlign: 'right' }}>Plus %</th>
+                  <th style={{ padding: '16px', textAlign: 'center' }}>AI</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTitoli.map(t => {
+                  const isLoss = t.plus < 0;
+                  const isTop = badges.topIds.includes(t.id);
+                  const isWorst = badges.worstIds.includes(t.id);
+
+                  return (
+                    <tr
+                      key={t.id}
+                      style={{
+                        borderBottom: '1px solid var(--border)',
+                        backgroundColor: isLoss ? 'rgba(248, 113, 113, 0.03)' : 'transparent',
+                        transition: 'var(--transition)'
+                      }}
+                    >
+                      <td style={{ padding: '16px', fontWeight: '600' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            display: 'inline-block',
+                            backgroundColor: t.banca === "BPER" ? "var(--bper)" : t.banca === "Mediolanum" ? "var(--med)" : "var(--poste)"
+                          }} />
+                          <span>{t.nome}</span>
+                          {isTop && <span style={{ backgroundColor: 'var(--green)', color: '#000', fontSize: '9px', fontWeight: '800', padding: '1px 4px', borderRadius: '3px', marginLeft: '6px' }}>▲ TOP</span>}
+                          {isWorst && <span style={{ backgroundColor: 'var(--red)', color: '#fff', fontSize: '9px', fontWeight: '800', padding: '1px 4px', borderRadius: '3px', marginLeft: '6px' }}>▼ PEGGIORE</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px', color: 'var(--muted)', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>{t.isin || '—'}</td>
+                      <td style={{ padding: '16px' }}>{t.asset}</td>
+                      <td style={{ padding: '16px', textAlign: 'right' }}>{t.quote !== null ? t.quote.toLocaleString("it-IT", { maximumFractionDigits: 3 }) : '—'}</td>
+                      <td style={{ padding: '16px', textAlign: 'right', fontWeight: '500' }}>{fmtEUR(t.investito)}</td>
+                      <td style={{ padding: '16px', textAlign: 'right', fontWeight: '600' }}>{fmtEUR(t.valore)}</td>
+                      <td style={{ padding: '16px', textAlign: 'right', fontWeight: '700', color: t.plus >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                        {t.plus >= 0 ? '+' : ''}{fmtEUR(t.plus)}
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'right', fontWeight: '700', color: t.plus >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                        {t.plus >= 0 ? '+' : ''}{t.pct.toFixed(2)}%
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                        {t.asset !== "Liquidità" ? (
+                          <button
+                            onClick={() => handleAICall("singolo", t)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}
+                            title="Analizza con AI"
+                          >
+                            📊
+                          </button>
+                        ) : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+    };
+
+    const fmtEUR = (val) => {
+      if (typeof val !== 'number') return "€ 0,00";
+      return val.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+    };
+
+    // --- COMPONENTI RIUTILIZZABILI ---
+    const Btn = ({ children, onClick, style, small, danger, active, disabled }) => {
+      let bg = 'var(--card)';
+      let color = 'var(--text)';
+      let border = '1px solid var(--border)';
+      
+      if (active) {
+        bg = style?.activeBg || 'var(--accent)';
+        color = '#ffffff';
+        border = '1px solid transparent';
+      } else if (danger) {
+        bg = 'rgba(248, 113, 113, 0.1)';
+        color = 'var(--red)';
+        border = '1px solid var(--red)';
+      }
+
+      return (
+        <button
+          onClick={onClick}
+          disabled={disabled}
+          className="no-print"
+          style={{
+            backgroundColor: disabled ? 'rgba(0,0,0,0.05)' : bg,
+            color: disabled ? 'var(--muted)' : color,
+            border: border,
+            padding: small ? '6px 12px' : '10px 20px',
+            fontSize: small ? '12px' : '14px',
+            fontWeight: '600',
+            borderRadius: '8px',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            transition: 'var(--transition)',
+            opacity: disabled ? 0.5 : 1,
+            outline: 'none',
+            ...style
+          }}
+        >
+          {children}
+        </button>
+      );
+    };
+
+    const KpiCard = ({ label, value, sub, color }) => {
+      return (
+        <div style={{
+          backgroundColor: 'var(--card)',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+          position: 'relative',
+          overflow: 'hidden',
+          transition: 'var(--transition)'
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '4px',
+            height: '100%',
+            backgroundColor: color || 'var(--accent)'
+          }} />
+          <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            {label}
+          </span>
+          <span style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
+            {value}
+          </span>
+          {sub && (
+            <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '500' }}>
+              {sub}
+            </span>
+          )}
+        </div>
+      );
+    };
+
+    const Donut = ({ data, size = 180 }) => {
+      const cx = size / 2;
+      const cy = size / 2;
+      const outerRadius = size * 0.36;
+      const innerRadius = size * 0.22;
+
+      const validData = data.filter(d => d.value > 0);
+      const total = validData.reduce((sum, d) => sum + d.value, 0);
+
+      if (total === 0) {
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: size, color: 'var(--muted)', fontSize: '13px' }}>
+            Nessun dato attivo
+          </div>
+        );
+      }
+
+      let accumulatedAngle = 0;
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '100%' }}>
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+            {validData.map((item, index) => {
+              const pct = item.value / total;
+              const angle = pct * 360;
+              const startAngle = accumulatedAngle;
+              const endAngle = accumulatedAngle + angle;
+              accumulatedAngle = endAngle;
+
+              const drawAngle = angle >= 360 ? 359.99 : angle;
+              const radStart = (startAngle - 90) * Math.PI / 180;
+              const radEnd = (startAngle + drawAngle - 90) * Math.PI / 180;
+
+              const x1_out = cx + outerRadius * Math.cos(radStart);
+              const y1_out = cy + outerRadius * Math.sin(radStart);
+              const x2_out = cx + outerRadius * Math.cos(radEnd);
+              const y2_out = cy + outerRadius * Math.sin(radEnd);
+
+              const x1_in = cx + innerRadius * Math.cos(radStart);
+              const y1_in = cy + innerRadius * Math.sin(radStart);
+              const x2_in = cx + innerRadius * Math.cos(radEnd);
+              const y2_in = cy + innerRadius * Math.sin(radEnd);
+
+              const largeArc = drawAngle > 180 ? 1 : 0;
+
+              const pathData = `
+                M ${x1_out} ${y1_out}
+                A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x2_out} ${y2_out}
+                L ${x2_in} ${y2_in}
+                A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x1_in} ${y1_in}
+                Z
+              `;
+
+              return (
+                <path
+                  key={index}
+                  d={pathData}
+                  fill={item.color}
+                  stroke="var(--card)"
+                  strokeWidth="1.5"
+                  style={{ transition: 'var(--transition)' }}
+                >
+                  <title>{item.label}: {fmtEUR(item.value)} ({(pct*100).toFixed(1)}%)</title>
+                </path>
+              );
+            })}
+            <text x={cx} y={cy + 4} textAnchor="middle" fill="var(--text)" fontSize="13" fontWeight="700" fontFamily="var(--font-display)">
+              {total.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+            </text>
+          </svg>
+
+          {/* Legend */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+            {validData.map((item, index) => {
+              const pct = (item.value / total) * 100;
+              return (
+                <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: item.color }} />
+                    <span style={{ color: 'var(--muted)', fontWeight: '500' }}>{item.label}</span>
+                  </div>
+                  <div style={{ fontWeight: '600' }}>
+                    {fmtEUR(item.value)} <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: '400' }}>({pct.toFixed(1)}%)</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
+
+    const BarChart = ({ items }) => {
+      const maxPct = Math.max(...items.map(item => Math.abs(item.pct)), 0.01);
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+          {items.map((item, index) => {
+            const widthPct = Math.min((Math.abs(item.pct) / maxPct) * 100, 100);
+            const labelStr = `${item.pct >= 0 ? '+' : ''}${item.pct.toFixed(2)}% (${fmtEUR(item.plus)})`;
+            
+            return (
+              <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{ color: 'var(--muted)', fontWeight: '500' }}>{item.label}</span>
+                </div>
+                <div style={{
+                  height: '30px',
+                  backgroundColor: 'var(--border)',
+                  borderRadius: '6px',
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  overflow: 'hidden',
+                  width: '100%'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: `${widthPct}%`,
+                    backgroundColor: item.color,
+                    borderRadius: '6px',
+                    transition: 'width 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    paddingRight: widthPct > 40 ? '12px' : '0px',
+                    boxSizing: 'border-box'
+                  }}>
+                    {widthPct > 40 && (
+                      <span style={{ color: '#ffffff', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                        {labelStr}
+                      </span>
+                    )}
+                  </div>
+                  {widthPct <= 40 && (
+                    <span style={{
+                      position: 'absolute',
+                      left: `calc(${widthPct}% + 8px)`,
+                      color: 'var(--text)',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {labelStr}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    };
+
+    const BankLogo = ({ banca, size = 40 }) => {
+      if (banca === "BPER") {
+        return (
+          <svg width={size} height={size} viewBox="0 0 40 40">
+            <rect width="40" height="40" rx="6" fill="#00703c"/>
+            <text x="20" y="26" textAnchor="middle" fontSize="13" fontWeight="bold" fill="white" fontFamily="Arial">BPER</text>
+          </svg>
+        );
+      }
+      if (banca === "Mediolanum") {
+        return (
+          <svg width={size} height={size} viewBox="0 0 40 40">
+            <rect width="40" height="40" rx="6" fill="#e4002b"/>
+            <circle cx="20" cy="20" r="10" fill="none" stroke="white" strokeWidth="2.5"/>
+            <circle cx="20" cy="20" r="4" fill="white"/>
+          </svg>
+        );
+      }
+      if (banca === "Poste") {
+        return (
+          <svg width={size} height={size} viewBox="0 0 40 40">
+            <rect width="40" height="40" rx="6" fill="#003087"/>
+            <rect x="6" y="12" width="28" height="16" rx="2" fill="#ffcc00"/>
+            <polyline points="6,12 20,22 34,12" fill="none" stroke="#003087" strokeWidth="2"/>
+          </svg>
+        );
+      }
+      return null;
+    };
+
+    const Modal = ({ title, onClose, children }) => {
+      const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+      useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 640);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+      }, []);
+
+      useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = 'unset'; };
+      }, []);
+
+      const overlayStyle = {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(15, 17, 23, 0.75)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: isMobile ? 'flex-end' : 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: isMobile ? 0 : '20px',
+        animation: 'fadeIn 0.2s ease-out'
+      };
+
+      const containerStyle = isMobile ? {
+        width: '100%',
+        maxHeight: '90vh',
+        backgroundColor: 'var(--card)',
+        borderTop: '1px solid var(--border)',
+        borderRadius: '16px 16px 0 0',
+        padding: '24px 20px calc(24px + env(safe-area-inset-bottom)) 20px',
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px',
+        overflowY: 'auto',
+        animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+      } : {
+        width: '100%',
+        maxWidth: '680px',
+        maxHeight: '85vh',
+        backgroundColor: 'var(--card)',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        padding: '24px',
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px',
+        overflowY: 'auto',
+        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)'
+      };
+
+      return (
+        <div style={overlayStyle} onClick={onClose}>
+          <div style={containerStyle} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{title}</h3>
+              <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '24px', cursor: 'pointer' }}>&times;</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+              {children}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- MAIN APP ---
+    function App() {
+      // --- STATE ---
+      const [titoli, setTitoli] = useState(() => {
+        const saved = localStorage.getItem("titoli_v1");
+        if (saved) {
+          try {
+            return JSON.parse(saved).map(calcTitolo);
+          } catch(e) {
+            console.error("Errore parse titoli salvati", e);
+          }
+        }
+        return BASE_TITOLI.map(calcTitolo);
+      });
+
+      const [lastUpdate, setLastUpdate] = useState(() => localStorage.getItem("last_update"));
+      const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
+      
+      const [tab, setTab] = useState("Tutti");
+      const [sortKey, setSortKey] = useState("pct"); // pct, plus, valore, nome
+      const [searchQuery, setSearchQuery] = useState("");
+
+      const [apiKey, setApiKey] = useState(() => localStorage.getItem("anthropic_api_key") || "");
+      const [proxyUrl, setProxyUrl] = useState(() => localStorage.getItem("cors_proxy") || "");
+
+      // Modali & UI
+      const [modal, setModal] = useState(null); // { title, content }
+      const [aiLoading, setAiLoading] = useState(false);
+      const [calcLoading, setCalcLoading] = useState(false); // FinanceAgent math spinner
+      const [prelievoOpen, setPrelievoOpen] = useState(false);
+      const [prelievoImporto, setPrelievoImporto] = useState("");
+      const [prelievoData, setPrelievoData] = useState("");
+      
+      const [storicoOpen, setStoricoOpen] = useState(false);
+      const [storico, setStorico] = useState(() => {
+        const saved = localStorage.getItem("storico_analisi");
+        return saved ? JSON.parse(saved) : [];
+      });
+
+      const [aggOpen, setAggOpen] = useState(false);
+      const [aggTab, setAggTab] = useState("BPER");
+      const [aggValues, setAggValues] = useState({}); // { id: { valore, quote } }
+
+      const [settingsOpen, setSettingsOpen] = useState(false);
+      const [agentLogOpen, setAgentLogOpen] = useState(false);
+      const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+      // --- EFFECTS ---
+      useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 640);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+      }, []);
+
+      useEffect(() => {
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem("theme", theme);
+      }, [theme]);
+
+      // --- COMPUTED DATA (FinanceAgent processing) ---
+      // We pass the React state `titoli` to `FinanceAgent.process`
+      // This recalculates all fields and builds the math calculation audit log.
+      const { processedTitoli, agentLogs, agentErrors } = useMemo(() => {
+        const result = FinanceAgent.process(titoli);
+        return {
+          processedTitoli: result.active,
+          agentLogs: result.logs,
+          agentErrors: result.errors
+        };
+      }, [titoli]);
+
+      // Aggregates for active assets
+      const totals = useMemo(() => {
+        let investito = 0;
+        let valore = 0;
+        let liquidita = 0;
+
+        processedTitoli.forEach(t => {
+          investito += t.investito;
+          valore += t.valore;
+          if (t.asset === "Liquidità") {
+            liquidita += t.valore;
+          }
+        });
+
+        const plus = valore - investito;
+        const pct = investito > 0 ? (plus / investito) * 100 : 0;
+
+        return { investito, valore, plus, pct, liquidita };
+      }, [processedTitoli]);
+
+      // Performance by Bank
+      const bankData = useMemo(() => {
+        const banks = ["BPER", "Mediolanum", "Poste"];
+        return banks.map(name => {
+          const items = processedTitoli.filter(t => t.banca === name);
+          const count = items.length;
+          const investito = items.reduce((sum, t) => sum + t.investito, 0);
+          const valore = items.reduce((sum, t) => sum + t.valore, 0);
+          const plus = valore - investito;
+          const pct = investito > 0 ? (plus / investito) * 100 : 0;
+
+          return { name, count, investito, valore, plus, pct };
+        });
+      }, [processedTitoli]);
+
+      // Filters and sorting
+      const filteredTitoli = useMemo(() => {
+        return processedTitoli
+          .filter(t => {
+            const matchesTab = tab === "Tutti" || t.banca === tab;
+            const matchesSearch = t.nome.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                  (t.isin && t.isin.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                                  t.asset.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesTab && matchesSearch;
+          })
+          .sort((a, b) => {
+            if (sortKey === "pct") return b.pct - a.pct;
+            if (sortKey === "plus") return b.plus - a.plus;
+            if (sortKey === "valore") return b.valore - a.valore;
+            if (sortKey === "nome") return a.nome.localeCompare(b.nome);
+            return 0;
+          });
+      }, [processedTitoli, tab, sortKey, searchQuery]);
+
+      // Top 3 / Worst 3 badges (Excluding Cash)
+      const badges = useMemo(() => {
+        const list = processedTitoli.filter(t => t.banca === (tab === "Tutti" ? t.banca : tab) && t.asset !== "Liquidità");
+        
+        const sortedDesc = [...list].sort((a, b) => b.pct - a.pct);
+        const topIds = sortedDesc.slice(0, 3).map(t => t.id);
+
+        const negativeList = list.filter(t => t.pct < 0);
+        const sortedAsc = [...negativeList].sort((a, b) => a.pct - b.pct);
+        const worstIds = sortedAsc.slice(0, 3).map(t => t.id);
+
+        return { topIds, worstIds };
+      }, [processedTitoli, tab]);
+
+      // SVG Chart preparation
+      const chartBankDonutData = useMemo(() => {
+        const colors = { BPER: "var(--bper)", Mediolanum: "var(--med)", Poste: "var(--poste)" };
+        return bankData.map(b => ({
+          label: b.name,
+          value: b.valore,
+          color: colors[b.name]
+        }));
+      }, [bankData]);
+
+      const chartBankBarData = useMemo(() => {
+        const colors = { BPER: "var(--bper)", Mediolanum: "var(--med)", Poste: "var(--poste)" };
+        return bankData.map(b => ({
+          label: b.name,
+          pct: b.pct,
+          plus: b.plus,
+          color: colors[b.name]
+        }));
+      }, [bankData]);
+
+      const chartAssetDonutData = useMemo(() => {
+        const classes = ["Azionario", "Obbligazionario", "Bilanciato/Misto", "Polizze", "Liquidità"];
+        const colors = {
+          "Azionario": "var(--accent)",
+          "Obbligazionario": "var(--accentB)",
+          "Bilanciato/Misto": "var(--yellow)",
+          "Polizze": "var(--pink)",
+          "Liquidità": "var(--gray)"
+        };
+
+        return classes.map(cls => {
+          const val = processedTitoli.filter(t => t.asset === cls).reduce((sum, t) => sum + t.valore, 0);
+          return {
+            label: cls,
+            value: val,
+            color: colors[cls]
+          };
+        });
+      }, [processedTitoli]);
+
+      // --- HELPERS DI PROMPT ---
+      const buildCtx = (list) => {
+        return list.map(t => {
+          return `- ${t.nome} (ISIN: ${t.isin || 'N/A'}, Categoria: ${t.asset}, Banca: ${t.banca}): Investito Residuo € ${t.investito.toFixed(2)}, Valore € ${t.valore.toFixed(2)}, Plus € ${t.plus.toFixed(2)} (${t.pct.toFixed(2)}%)`;
+        }).join("\n");
+      };
+
+      const handleAICall = async (type, payload = null) => {
+        setAiLoading(true);
+        let prompt = "";
+        let system = "Sei un consulente finanziario esperto. Rispondi SEMPRE in italiano. Usa la web search per dati di mercato aggiornati. Ogni analisi o valutazione fiscale è base di discussione per il consulente, non consulenza personalizzata vincolante.";
+        let maxTokens = 2000;
+        let title = "";
+
+        const tabTitles = processedTitoli.filter(t => tab === "Tutti" || t.banca === tab);
+
+        if (type === "analisi") {
+          title = `Analisi Portafoglio — ${tab}`;
+          prompt = `Analizza il portafoglio titoli attivo del cliente (Tab: ${tab}).
+Dati attuali:
+${buildCtx(tabTitles)}
+
+Fornisci un'analisi in italiano strutturata:
+1. COMPOSIZIONE: Patrimonio totale, investito, plusvalenza.
+2. DIVERSIFICAZIONE: Ripartizione per banca e per asset class.
+3. CRITICITÀ: Sbilanciamenti, troppa liquidità ferma o rischi.
+4. MIGLIORI/PEGGIORI: I top 3 e i peggiori in perdita, spiegando il motivo dell'impatto sul portafoglio.
+5. CONTESTO MACROECONOMICO: Usa la ricerca web (web_search) per dare un commento sul mercato attuale.
+*NON proporre vendite o acquisti in questa fase.*`;
+        } 
+        else if (type === "suggerimenti") {
+          title = `Suggerimenti Strategici — ${tab}`;
+          prompt = `Fornisci consigli pratici e azioni concrete per il portafoglio (Tab: ${tab}).
+Dati attuali:
+${buildCtx(tabTitles)}
+
+Struttura:
+1. AZIONI CONCRETE: Ribilanciamenti, modifiche di allocazione.
+2. OPPORTUNITÀ: Sostituzione di strumenti inefficienti.
+3. CONSIDERAZIONI FISCALI: Dettaglio sul 26% sulle plusvalenze e sul perché le minusvalenze derivanti da fondi comuni o sicav NON compensano le plusvalenze generate da altri fondi (fondi comuni in Italia generano reddito di capitale per le plusvalenze e reddito diverso per le minusvalenze).
+4. PIANO OPERATIVO: Strategia di breve/medio termine.`;
+        } 
+        else if (type === "dismetti") {
+          title = `Proposta Dismissione € ${payload.importo}`;
+          maxTokens = 3000;
+          
+          const nonCashTitles = processedTitoli.filter(t => t.asset !== "Liquidità");
+          prompt = `Il cliente vuole liberare un importo di € ${payload.importo} entro la data "${payload.data || 'non specificata'}".
+Portafoglio attivo (esclusa la liquidità):
+${buildCtx(nonCashTitles)}
+
+Ti prego di fornire una proposta ESAUSTIVA:
+1. PROPOSTA DI VENDITA: Per ciascun titolo suggerito, indica importo (€ e quote), performance, motivazione macroeconomica (web search), considerazioni fiscali (tassazione 26% e divieto di compensazione automatica minus fondi con plus fondi in Italia), ed effetto sull'asset allocation.
+2. TITOLI DA NON VENDERE e perché.
+3. RIEPILOGO: totale da raccogliere, stima imposte (26%), asset allocation prima/dopo.
+4. NOTA FINALE: discussione consulente, aggiornamento valori reali.
+La liquidità (C/C e libretti) non deve MAI essere venduta.`;
+        } 
+        else if (type === "singolo") {
+          title = `Analisi Strumento: ${payload.nome}`;
+          maxTokens = 1500;
+          prompt = `Analizza nel dettaglio lo strumento finanziario:
+- Nome: ${payload.nome}
+- ISIN: ${payload.isin || 'N/A'}
+- Asset Class: ${payload.asset}
+- Banca: ${payload.banca}
+- Investito residuo: € ${payload.investito.toFixed(2)}
+- Valore attuale: € ${payload.valore.toFixed(2)}
+- Plusvalenza: € ${payload.plus.toFixed(2)} (${payload.pct.toFixed(2)}%)
+
+Analisi richiesta:
+1. ANDAMENTO ULTIMI 12 MESI: Cerca informazioni sull'andamento di questo fondo/ISIN via web search. Se non trovi dati storici certi, DICHIARALO ESPLICITAMENTE e in modo onesto, senza inventare numeri o andamenti.
+2. SCENARIO QUALITATIVO ASSET CLASS: scenario per la categoria "${payload.asset}" per i prossimi 12 mesi.
+3. RUOLO: Ruolo nel portafoglio del cliente.`;
+        }
+
+        try {
+          if (!apiKey) {
+            throw new Error("API Key mancante nelle impostazioni. Puoi usare la modalità DEMO cliccando sul bottone qui sotto.");
+          }
+
+          const responseText = await callAnthropic(prompt, system, maxTokens);
+          setModal({ title, content: responseText });
+        } catch (err) {
+          console.error(err);
+          setModal({
+            title: "Configurazione AI Richiesta",
+            isError: true,
+            errorMsg: err.message,
+            titleTarget: title,
+            promptTarget: prompt,
+            systemTarget: system,
+            maxTokensTarget: maxTokens
+          });
+        } finally {
+          setAiLoading(false);
+        }
+      };
+
+      const callAnthropic = async (prompt, system, maxTokens) => {
+        let url = "https://api.anthropic.com/v1/messages";
+        if (proxyUrl) {
+          url = proxyUrl + url;
+        }
+
+        const body = {
+          model: "claude-sonnet-4-20250514",
+          max_tokens: maxTokens,
+          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          messages: [{ role: "user", content: prompt }],
+          system: system
+        };
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "dangerously-allow-browser": "true"
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Errore API (${res.status}): ${errText}`);
+        }
+
+        const data = await res.json();
+        return data.content
+          .filter(b => b.type === "text")
+          .map(b => b.text)
+          .join("\n");
+      };
+
+      const handleGenerateDemo = (titleTarget, promptTarget) => {
+        let demoText = "";
+        
+        if (titleTarget.includes("Analisi Portafoglio")) {
+          demoText = `=== ANALISI COMPOSIZIONE ===
+Patrimonio Totale: ${fmtEUR(totals.valore)}
+Capitale Investito: ${fmtEUR(totals.investito)}
+Plusvalenza Latente: ${fmtEUR(totals.plus)} (${totals.pct.toFixed(2)}%)
+Liquidità Ferma su C/C: ${fmtEUR(totals.liquidita)} (${((totals.liquidita / totals.valore) * 100).toFixed(1)}% del patrimonio).
+
+=== DIVERSIFICAZIONE ===
+• Ripartizione per intermediario:
+  - BPER detiene la quota maggiore con circa il 57% degli asset.
+  - Mediolanum segue con il 33% del capitale totale.
+  - Poste Italiane rappresenta circa il 10% del portafoglio complessivo.
+• Ripartizione per classe di attivo:
+  - La quota obbligazionaria e le polizze assicurative formano oltre il 65% del portafoglio, delineando un profilo prudente e orientato alla stabilità.
+  - La componente azionaria (circa il 20%) apporta crescita ma risente della volatilità recente dei mercati emergenti (es. India).
+
+=== CRITICITÀ E SCENARI ===
+1. Eccesso di Liquidità: Circa il 3% del patrimonio complessivo giace su conti correnti infruttiferi. In periodi di inflazione residua, questo rappresenta una perdita reale di potere d'acquisto.
+2. Inefficienze in alcuni comparti: Rilevate inefficienze sul fondo obbligazionario globale convertibile (BPER Gl Cv Bond) con rendimenti sotto benchmark.
+
+=== MIGLIORI / PEGGIORI COMPARTI ===
+1. Arca R Val Re 27 2: Ottima plusvalenza (+22.80% assoluto) che traina la performance di BPER.
+2. MBB Morgan Stanley Global Sel.: Buona crescita sull'azionario globale.
+3. Mediolanum India Opp. (PEGGIORE): In perdita temporanea del -16.54% a causa della recente correzione sull'azionario indiano e svalutazione valutaria.
+
+=== CONTESTO MACRO (Web Search Mocked) ===
+I mercati obbligazionari europei beneficiano della stabilizzazione dei tassi d'interesse da parte della BCE. Le strategie a cedola (Arca Ced 26) mantengono un rendimento a scadenza coerente, mentre le classi azionarie globali risentono delle tensioni geopolitiche internazionali, favorendo una rotazione verso titoli di tipo Value ed energetici.`;
+        } 
+        else if (titleTarget.includes("Suggerimenti Strategici")) {
+          demoText = `=== AZIONI CONCRETE DI RIBILANCIAMENTO ===
+1. Riduzione della Liquidità Ferma: Consigliabile destinare una quota della liquidità (es. € 5.000 da C/C BPER) verso strumenti obbligazionari a breve termine o conti deposito, incrementando la redditività senza aumentare il rischio di credito.
+2. Consolidamento Azionario: Valutare lo spostamento graduale di parte dell'azionario settoriale (es. Challenge Energy) verso indici azionari globali geograficamente più diversificati per ridurre il rischio specifico.
+
+=== TRATTAMENTO E CONSIDERAZIONI FISCALI IN ITALIA ===
+> [!WARNING]
+> In Italia, la tassazione sulle plusvalenze finanziarie è pari al 26% (eccetto per i titoli di stato tassati al 12,5%).
+> **Nota sulle Minusvalenze**: Le minusvalenze generate dalla vendita di fondi comuni di investimento (OICR) o ETF NON possono compensare direttamente le plusvalenze generate da altri fondi comuni all'interno dello zainetto fiscale ordinario in regime amministrato.
+> Le plusvalenze da fondi costituiscono "Reddito di Capitale", mentre le minusvalenze costituiscono "Redditi Diversi". Questo asimmetria fiscale impedisce la compensazione incrociata. La compensazione delle minusvalenze da fondi è possibile solo con plusvalenze da "singoli titoli" (azioni o obbligazioni dirette) o certificates.
+
+=== OPPORTUNITÀ DI COMPENSAZIONE ===
+Qualora si liquidino fondi in perdita (es. Mediolanum India Opportunities), la minusvalenza registrata può essere compensata nei 4 anni successivi acquistando Certificates a capitale protetto o singole obbligazioni corporate che generano plusvalenze qualificate come Redditi Diversi.`;
+        } 
+        else if (titleTarget.includes("Proposta Dismissione")) {
+          demoText = `=== PROPOSTA DI DISMISSIONE STRUTTURATA ===
+Per recuperare l'importo di € ${prelievoImporto} entro la data ${prelievoData || 'N/A'}, si suggeriscono le seguenti vendite parziali, evitando di toccare la liquidità ferma che deve rimanere come riserva:
+
+1. PROPOSTA DI VENDITA:
+   - **Arca Ced Att 26 R** (BPER): Vendita di € 10.000. Lo strumento ha una plusvalenza solida e si avvicina alla scadenza naturale. Tassazione del 26% sulla plusvalenza maturata pro-quota.
+   - **Poste Progetto Dinamico Bonus** (Poste): Riscatto parziale di € 10.000. La polizza ha generato buone performance storiche. Fiscale: La parte riferibile alla gestione separata gode di una tassazione agevolata media inferiore al 26% (attorno al 18-20% in base ai titoli di stato in pancia).
+   - **MBB Morgan Stanley Global Sel.** (Mediolanum): Vendita pro-quota di € 5.000. Consente di monetizzare una frazione delle plusvalenze accumulate sull'azionario globale.
+
+2. STRUMENTI DA NON TOCCARE:
+   - Fondi in perdita significativa (es. Mediolanum India Opp. o Bper Global Bond) per evitare di cristallizzare perdite inutilmente in assenza di singoli titoli con cui compensare la minusvalenza maturata.
+
+3. PROSPETTO RIEPILOGATIVO:
+   - Capitale Lordo Riscattato: € 25.000
+   - Stima Imposte capital gain (26% medio): circa € 620
+   - Netto stimato in liquidazione: € 24.380
+   - L'asset allocation rimane bilanciata, mantenendo intatta la riserva di liquidità su conto corrente.
+
+Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consulente per operare.`;
+        } 
+        else {
+          demoText = `=== ANALISI DELLO STRUMENTO ===
+• Andamento 12 Mesi: Lo strumento ha registrato una performance solida, beneficiando della ripresa del comparto obbligazionario europeo. Le cedole distribuite o accumulate hanno garantito una protezione efficace contro l'inflazione.
+• Scenario Asset Class: Le prospettive a 12 mesi per la classe di attivo rimangono moderatamente positive, sostenute dalle politiche monetarie delle banche centrali.
+• Ruolo in Portafoglio: Rappresenta uno stabilizzatore del portafoglio, offrendo flussi di reddito regolari e limitando la volatilità complessiva del portafoglio globale del cliente.`;
+        }
+
+        setModal({ title: titleTarget, content: demoText });
+      };
+
+      // --- STORICO GESTIONE ---
+      const handleSaveAnalysis = () => {
+        if (!modal) return;
+        const nuvoItem = {
+          id: Date.now(),
+          title: modal.title,
+          content: modal.content,
+          date: new Date().toLocaleString("it-IT")
+        };
+        const nuovoStorico = [nuvoItem, ...storico].slice(0, 10);
+        setStorico(nuovoStorico);
+        localStorage.setItem("storico_analisi", JSON.stringify(nuovoStorico));
+        alert("Analisi salvata nello storico!");
+      };
+
+      const handleDeleteStorico = (id) => {
+        const nuovo = storico.filter(s => s.id !== id);
+        setStorico(nuovo);
+        localStorage.setItem("storico_analisi", JSON.stringify(nuovo));
+      };
+
+      // --- VALORI GESTIONE ---
+      const openUpdateValori = () => {
+        const initialDrafts = {};
+        titoli.forEach(t => {
+          initialDrafts[t.id] = { valore: t.valore, quote: t.quote };
+        });
+        setAggValues(initialDrafts);
+        setAggOpen(true);
+      };
+
+      const handleSaveAllValori = () => {
+        setCalcLoading(true); // show calculations spinner loader
+        setTimeout(() => {
+          const nuoviTitoli = titoli.map(t => {
+            const draft = aggValues[t.id];
+            if (draft) {
+              return calcTitolo({
+                ...t,
+                valore: parseFloat(draft.valore) || 0,
+                quote: draft.quote !== null ? (parseFloat(draft.quote) || 0) : null
+              });
+            }
+            return t;
+          });
+
+          setTitoli(nuoviTitoli);
+          const timestamp = new Date().toLocaleString("it-IT");
+          setLastUpdate(timestamp);
+
+          localStorage.setItem("titoli_v1", JSON.stringify(nuoviTitoli));
+          localStorage.setItem("last_update", timestamp);
+
+          setAggOpen(false);
+          setCalcLoading(false);
+          alert("Valori salvati e ricalcolati correttamente da FinanceAgent!");
+        }, 600);
+      };
+
+      const handleResetOriginali = () => {
+        if (confirm("Sei sicuro di voler ripristinare i dati originali del portafoglio? Tutte le modifiche andranno perse.")) {
+          setCalcLoading(true); // show calculations spinner loader
+          setTimeout(() => {
+            const originaliProcessati = BASE_TITOLI.map(calcTitolo);
+            setTitoli(originaliProcessati);
+            setLastUpdate(null);
+            localStorage.removeItem("titoli_v1");
+            localStorage.removeItem("last_update");
+            setAggOpen(false);
+            setCalcLoading(false);
+            alert("Dati originali ripristinati!");
+          }, 500);
+        }
+      };
+
+      // Copy to Clipboard
+      const handleCopyToClipboard = (text) => {
+        navigator.clipboard.writeText(text)
+          .then(() => alert("Copiato negli appunti!"))
+          .catch(() => alert("Errore durante la copia."));
+      };
+
+      // Export PDF Helper
+      const handleExportPDF = (title, content) => {
+        const printWindow = window.open("", "_blank");
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>${title}</title>
+            <style>
+              body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                color: #111827;
+                background-color: #ffffff;
+                padding: 40px;
+                line-height: 1.6;
+                max-width: 850px;
+                margin: 0 auto;
+              }
+              h1 {
+                font-size: 22px;
+                border-bottom: 2px solid #6c63ff;
+                padding-bottom: 10px;
+                margin-bottom: 20px;
+                color: #0f1117;
+                font-family: 'Outfit', sans-serif;
+              }
+              .meta {
+                font-size: 13px;
+                color: #6b7280;
+                margin-bottom: 30px;
+              }
+              .content {
+                white-space: pre-wrap;
+                font-size: 14px;
+                margin-bottom: 40px;
+                background: #f8fafc;
+                padding: 20px;
+                border-radius: 8px;
+                border: 1px solid #e2e8f0;
+              }
+              .disclaimer {
+                font-size: 11px;
+                color: #9ca3af;
+                border-top: 1px solid #e5e7eb;
+                padding-top: 20px;
+                margin-top: 40px;
+                font-style: italic;
+              }
+              .btn-print {
+                background-color: #6c63ff;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                font-size: 14px;
+                font-weight: 600;
+                border-radius: 6px;
+                cursor: pointer;
+                margin-bottom: 25px;
+                transition: background-color 0.2s;
+              }
+              .btn-print:hover {
+                background-color: #5b54e0;
+              }
+              @media print {
+                .no-print {
+                  display: none;
+                }
+                body {
+                  padding: 0;
+                  max-width: 100%;
+                }
+                .content {
+                  border: none;
+                  background: none;
+                  padding: 0;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="no-print" style="text-align: right;">
+              <button class="btn-print" onclick="window.print()">🖨️ Stampa / Salva PDF</button>
+            </div>
+            <h1>${title}</h1>
+            <div class="meta">Data Generazione: ${new Date().toLocaleString("it-IT")}</div>
+            <div class="content">${content}</div>
+            <div class="disclaimer">
+              ⚠️ Analisi generata da AI. Base di discussione per il consulente, non consulenza vincolante.
+            </div>
+          </body>
+          </html>
+        `);
+        printWindow.document.close();
+      };
+
+      const getTabColor = (tabName) => {
+        if (tabName === "BPER") return "var(--bper)";
+        if (tabName === "Mediolanum") return "var(--med)";
+        if (tabName === "Poste") return "var(--poste)";
+        return "var(--accent)";
+      };
+
+      return (
+        <div className="container">
+          
+          {/* HEADER */}
+          <header style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            justifyContent: 'space-between',
+            alignItems: isMobile ? 'stretch' : 'center',
+            gap: '16px',
+            borderBottom: '1px solid var(--border)',
+            paddingBottom: '20px'
+          }}>
+            <div>
+              <h1 style={{ fontSize: '28px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
+                Rigenera Dashboard
+              </h1>
+              <p style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>Analisi Portafoglio Investimenti</span>
+                {lastUpdate && (
+                  <span style={{
+                    backgroundColor: 'rgba(78, 205, 196, 0.15)',
+                    color: 'var(--accentB)',
+                    padding: '2px 8px',
+                    borderRadius: '20px',
+                    fontSize: '11px',
+                    fontWeight: '600'
+                  }}>
+                    Aggiornato: {lastUpdate}
+                  </span>
+                )}
+              </p>
+            </div>
+            
+            {/* Quick Actions Header */}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <Btn onClick={() => setPrelievoOpen(true)}>🏦 Dismetti</Btn>
+              <Btn onClick={openUpdateValori}>✏️ Aggiorna</Btn>
+              <Btn onClick={() => setStoricoOpen(true)}>🗂 Storico</Btn>
+              <Btn onClick={() => setSettingsOpen(true)}>⚙️</Btn>
+              <Btn onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                {theme === 'dark' ? '☀️' : '🌙'}
+              </Btn>
+            </div>
+          </header>
+
+          {/* GLOBAL KPIS */}
+          <section style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
+            gap: '16px'
+          }}>
+            <KpiCard
+              label="Patrimonio Totale"
+              value={fmtEUR(totals.valore)}
+              sub={`Investito: ${fmtEUR(totals.investito)}`}
+              color="var(--accent)"
+            />
+            <KpiCard
+              label="Capitale Investito"
+              value={fmtEUR(totals.investito)}
+              sub="Capitale attivo netto"
+              color="var(--accentB)"
+            />
+            <KpiCard
+              label="Plusvalenza / Minusvalenza"
+              value={`${totals.plus >= 0 ? '+' : ''}${fmtEUR(totals.plus)}`}
+              sub={`${totals.plus >= 0 ? '+' : ''}${totals.pct.toFixed(2)}%`}
+              color={totals.plus >= 0 ? 'var(--green)' : 'var(--red)'}
+            />
+            <KpiCard
+              label="Liquidità Ferma"
+              value={fmtEUR(totals.liquidita)}
+              sub={`${((totals.liquidita / totals.valore) * 100).toFixed(1)}% del portafoglio`}
+              color="var(--yellow)"
+            />
+          </section>
+
+          {/* BANK SUMMARIES */}
+          <section style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+            gap: '16px'
+          }}>
+            {bankData.map((b, idx) => {
+              const borderColors = { BPER: "var(--bper)", Mediolanum: "var(--med)", Poste: "var(--poste)" };
+              return (
+                <div key={idx} style={{
+                  backgroundColor: 'var(--card)',
+                  border: `1px solid var(--border)`,
+                  borderRadius: '12px',
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px',
+                  transition: 'var(--transition)',
+                  position: 'relative'
+                }}
+                className="bank-card"
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = borderColors[b.name]}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <BankLogo banca={b.name} size={36} />
+                      <div>
+                        <h4 style={{ fontWeight: '700', fontSize: '16px' }}>{b.name}</h4>
+                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{b.count} strumenti attivi</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                    <div>
+                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Investito</span>
+                      <p style={{ fontSize: '14px', fontWeight: '600' }}>{fmtEUR(b.investito)}</p>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Valore Attuale</span>
+                      <p style={{ fontSize: '14px', fontWeight: '600' }}>{fmtEUR(b.valore)}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg)', padding: '10px 14px', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Plusvalenza</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: b.plus >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                      {b.plus >= 0 ? '+' : ''}{fmtEUR(b.plus)} ({b.pct.toFixed(2)}%)
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </section>
+
+          {/* CHARTS */}
+          <section style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+            gap: '24px'
+          }}>
+            <div style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h4 style={{ fontSize: '15px', fontWeight: '700', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Ripartizione per Banca</h4>
+              <Donut data={chartBankDonutData} size={180} />
+            </div>
+            <div style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h4 style={{ fontSize: '15px', fontWeight: '700', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Plusvalenza per Banca (%)</h4>
+              <BarChart items={chartBankBarData} />
+            </div>
+            <div style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h4 style={{ fontSize: '15px', fontWeight: '700', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Ripartizione Asset Class</h4>
+              <Donut data={chartAssetDonutData} size={180} />
+            </div>
+          </section>
+
+          {/* AI SUITE CONTROLS */}
+          <section style={{
+            backgroundColor: 'var(--card)',
+            border: '1px solid var(--border)',
+            borderRadius: '12px',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '24px' }}>🤖</span>
+              <div>
+                <h4 style={{ fontWeight: '700', fontSize: '15px' }}>Consulente Finanziario AI</h4>
+                <p style={{ fontSize: '12px', color: 'var(--muted)' }}>Avvia analisi predittive e strategiche basate sulla cartella attiva: <strong>{tab}</strong></p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', width: isMobile ? '100%' : 'auto' }}>
+              <Btn
+                active
+                style={{ flex: 1, activeBg: getTabColor(tab) }}
+                onClick={() => handleAICall("analisi")}
+                disabled={aiLoading}
+              >
+                🔍 Analisi {tab}
+              </Btn>
+              <Btn
+                active
+                style={{ flex: 1, activeBg: getTabColor(tab) }}
+                onClick={() => handleAICall("suggerimenti")}
+                disabled={aiLoading}
+              >
+                💡 Suggerimenti {tab}
+              </Btn>
+            </div>
+          </section>
+
+          {/* LISTA TITOLI */}
+          <section style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              justifyContent: 'space-between',
+              alignItems: isMobile ? 'stretch' : 'center',
+              gap: '16px'
+            }}>
+              
+              {/* TABS */}
+              <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '4px' }}>
+                {["Tutti", "BPER", "Mediolanum", "Poste"].map(t => (
+                  <Btn
+                    key={t}
+                    active={tab === t}
+                    onClick={() => setTab(t)}
+                    style={{
+                      activeBg: getTabColor(t),
+                      padding: '8px 16px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {t}
+                  </Btn>
+                ))}
+              </div>
+
+              {/* SEARCH & SORT */}
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  placeholder="Cerca nome o ISIN..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    backgroundColor: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    padding: '8px 14px',
+                    color: 'var(--text)',
+                    fontSize: '13px',
+                    outline: 'none',
+                    flex: 1,
+                    minWidth: '150px',
+                    transition: 'var(--transition)'
+                  }}
+                />
+                
+                <select
+                  value={sortKey}
+                  onChange={(e) => setSortKey(e.target.value)}
+                  style={{
+                    backgroundColor: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    color: 'var(--text)',
+                    fontSize: '13px',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="pct">Rendimento %</option>
+                  <option value="plus">Plusvalenza €</option>
+                  <option value="valore">Valore attuale</option>
+                  <option value="nome">Nome</option>
+                </select>
+              </div>
+            </div>
+
+            {/* TITOLI VIEW (Desktop Table vs Mobile Cards) */}
+            {isMobile ? (
+              // MOBILE CARD VIEW
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {filteredTitoli.map(t => {
+                  const isLoss = t.plus < 0;
+                  const isTop = badges.topIds.includes(t.id);
+                  const isWorst = badges.worstIds.includes(t.id);
+
+                  return (
+                    <div
+                      key={t.id}
+                      style={{
+                        backgroundColor: 'var(--card)',
+                        border: isLoss ? '1px solid var(--red)' : '1px solid var(--border)',
+                        backgroundColor: isLoss ? 'rgba(248, 113, 113, 0.03)' : 'var(--card)',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                        transition: 'var(--transition)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              backgroundColor: t.banca === "BPER" ? "var(--bper)" : t.banca === "Mediolanum" ? "var(--med)" : "var(--poste)"
+                            }} />
+                            <h4 style={{ fontWeight: '700', fontSize: '15px' }}>{t.nome}</h4>
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px', display: 'block' }}>
+                            {t.isin || 'N/A'} • {t.asset}
+                          </span>
+                        </div>
+                        
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {isTop && <span style={{ backgroundColor: 'var(--green)', color: '#000', fontSize: '10px', fontWeight: '800', padding: '2px 6px', borderRadius: '4px' }}>▲ TOP</span>}
+                          {isWorst && <span style={{ backgroundColor: 'var(--red)', color: '#fff', fontSize: '10px', fontWeight: '800', padding: '2px 6px', borderRadius: '4px' }}>▼ PEGGIORE</span>}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '10px', fontSize: '12px' }}>
+                        <div>
+                          <span style={{ color: 'var(--muted)', display: 'block', fontSize: '10px' }}>Investito</span>
+                          <span style={{ fontWeight: '600' }}>{fmtEUR(t.investito)}</span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--muted)', display: 'block', fontSize: '10px' }}>Valore</span>
+                          <span style={{ fontWeight: '600' }}>{fmtEUR(t.valore)}</span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--muted)', display: 'block', fontSize: '10px' }}>Plus / Pct</span>
+                          <span style={{ fontWeight: '700', color: t.plus >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                            {t.plus >= 0 ? '+' : ''}{t.plus.toFixed(2)}€ ({t.pct.toFixed(1)}%)
+                          </span>
+                        </div>
+                      </div>
+
+                      {t.asset !== "Liquidità" && (
+                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
+                          <Btn small onClick={() => handleAICall("singolo", t)}>📊 Analizza Titolo</Btn>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              // DESKTOP TABLE VIEW (Rendered by UIAgent framework method)
+              UIAgent.renderTable({ filteredTitoli, fmtEUR, badges, handleAICall })
+            )}
+          </section>
+
+          {/* DEBUG FINANCEAGENT LOGS */}
+          <section style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+            <div
+              onClick={() => setAgentLogOpen(!agentLogOpen)}
+              style={{
+                padding: '16px 20px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                backgroundColor: 'rgba(0,0,0,0.02)'
+              }}
+            >
+              <h4 style={{ fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>🔍 Registro Calcoli FinanceAgent</span>
+              </h4>
+              <span>{agentLogOpen ? '▼' : '►'}</span>
+            </div>
+            
+            {agentLogOpen && (
+              <div style={{
+                padding: '20px',
+                borderTop: '1px solid var(--border)',
+                backgroundColor: 'rgba(0,0,0,0.05)',
+                maxHeight: '220px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
+              }}>
+                {agentLogs.map((log, index) => (
+                  <pre key={index} style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '11px',
+                    color: log.includes('⚠️') ? 'var(--red)' : log.includes('✅') ? 'var(--green)' : 'var(--muted)',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {log}
+                  </pre>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* LOADER OVERLAYS (Rendered by UIAgent showLoader method) */}
+          {UIAgent.showLoader(aiLoading, "Elaborazione AI in corso con Web Search...")}
+          {UIAgent.showLoader(calcLoading, "FinanceAgent: Ricalcolo quote e verifica integrità in corso...")}
+
+          {/* MODALS */}
+          
+          {/* AI Result / Configuration Modal */}
+          {modal && (
+            <Modal
+              title={modal.title || "Analisi AI"}
+              onClose={() => setModal(null)}
+            >
+              {modal.isError ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ backgroundColor: 'rgba(248, 113, 113, 0.1)', border: '1px solid var(--red)', padding: '16px', borderRadius: '8px', color: 'var(--red)', fontSize: '13px' }}>
+                    <strong>Attenzione:</strong> {modal.errorMsg}
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>Configura Chiave API Anthropic</label>
+                    <input
+                      type="password"
+                      placeholder="sk-ant-..."
+                      value={apiKey}
+                      onChange={(e) => {
+                        setApiKey(e.target.value);
+                        localStorage.setItem("anthropic_api_key", e.target.value);
+                      }}
+                      style={{
+                        backgroundColor: 'var(--bg)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        color: 'var(--text)',
+                        fontSize: '13px',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <Btn active style={{ flex: 1 }} onClick={() => handleAICall(modal.titleTarget.includes("Analisi") ? "analisi" : modal.titleTarget.includes("Suggerimenti") ? "suggerimenti" : modal.titleTarget.includes("Dismissione") ? "dismetti" : "singolo")}>
+                      Riprova Richiesta Reale
+                    </Btn>
+                    <Btn danger style={{ flex: 1 }} onClick={() => handleGenerateDemo(modal.titleTarget, modal.promptTarget)}>
+                      Genera Risposta Demo
+                    </Btn>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <Btn small onClick={() => handleCopyToClipboard(modal.content)}>📋 Copia</Btn>
+                    <Btn small onClick={handleSaveAnalysis}>💾 Salva</Btn>
+                    <Btn small onClick={() => handleExportPDF(modal.title, modal.content)}>📄 Esporta PDF</Btn>
+                  </div>
+
+                  <pre style={{
+                    whiteSpace: 'pre-wrap',
+                    fontFamily: 'var(--font-main)',
+                    fontSize: '13px',
+                    color: 'var(--text)',
+                    backgroundColor: 'var(--bg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    overflowX: 'auto',
+                    lineHeight: '1.6'
+                  }}>
+                    {modal.content}
+                  </pre>
+
+                  <div style={{
+                    fontSize: '11px',
+                    color: 'var(--muted)',
+                    borderTop: '1px solid var(--border)',
+                    paddingTop: '12px',
+                    fontStyle: 'italic'
+                  }}>
+                    ⚠️ Analisi generata da AI. Base di discussione per il consulente, non consulenza vincolante.
+                  </div>
+                </div>
+              )}
+            </Modal>
+          )}
+
+          {/* DISMETTERE MODAL */}
+          {prelievoOpen && (
+            <Modal
+              title="Cosa Dismettere"
+              onClose={() => setPrelievoOpen(false)}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600' }}>Importo da liberare (€) <span style={{ color: 'var(--red)' }}>*</span></label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="Es: 15000"
+                    value={prelievoImporto}
+                    onChange={(e) => setPrelievoImporto(e.target.value)}
+                    style={{
+                      backgroundColor: 'var(--bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      padding: '10px 14px',
+                      color: 'var(--text)',
+                      fontSize: '13px',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600' }}>Data entro cui serve (opzionale)</label>
+                  <input
+                    type="text"
+                    placeholder="Es: Fine Mese, Fine Anno, 30 Giugno..."
+                    value={prelievoData}
+                    onChange={(e) => setPrelievoData(e.target.value)}
+                    style={{
+                      backgroundColor: 'var(--bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      padding: '10px 14px',
+                      color: 'var(--text)',
+                      fontSize: '13px',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                <Btn
+                  active
+                  disabled={!prelievoImporto}
+                  onClick={() => {
+                    setPrelievoOpen(false);
+                    handleAICall("dismetti", { importo: prelievoImporto, data: prelievoData });
+                  }}
+                >
+                  🔍 Proponi titoli da dismettere
+                </Btn>
+              </div>
+            </Modal>
+          )}
+
+          {/* STORICO MODAL */}
+          {storicoOpen && (
+            <Modal
+              title="Storico Analisi Salvate"
+              onClose={() => setStoricoOpen(false)}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {storico.length === 0 ? (
+                  <p style={{ color: 'var(--muted)', textAlign: 'center', fontSize: '13px', padding: '20px' }}>Nessuna analisi salvata nello storico.</p>
+                ) : (
+                  storico.map(item => (
+                    <div key={item.id} style={{
+                      backgroundColor: 'var(--bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      padding: '12px 16px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div>
+                        <h4 style={{ fontSize: '14px', fontWeight: '700' }}>{item.title}</h4>
+                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{item.date}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <Btn small onClick={() => {
+                          setStoricoOpen(false);
+                          setModal({ title: item.title, content: item.content });
+                        }}>Apri</Btn>
+                        <Btn small danger onClick={() => handleDeleteStorico(item.id)}>Elimina</Btn>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Modal>
+          )}
+
+          {/* SETTINGS MODAL */}
+          {settingsOpen && (
+            <Modal
+              title="Impostazioni Connettività AI"
+              onClose={() => setSettingsOpen(false)}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600' }}>Anthropic API Key</label>
+                  <input
+                    type="password"
+                    placeholder="sk-ant-..."
+                    value={apiKey}
+                    onChange={(e) => {
+                      setApiKey(e.target.value);
+                      localStorage.setItem("anthropic_api_key", e.target.value);
+                    }}
+                    style={{
+                      backgroundColor: 'var(--bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      padding: '10px 14px',
+                      color: 'var(--text)',
+                      fontSize: '13px',
+                      outline: 'none'
+                    }}
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--muted)' }}>La chiave viene salvata esclusivamente sul browser locale del client.</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600' }}>CORS Proxy URL (Opzionale)</label>
+                  <input
+                    type="text"
+                    placeholder="Es: https://cors-anywhere.herokuapp.com/"
+                    value={proxyUrl}
+                    onChange={(e) => {
+                      setProxyUrl(e.target.value);
+                      localStorage.setItem("cors_proxy", e.target.value);
+                    }}
+                    style={{
+                      backgroundColor: 'var(--bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      padding: '10px 14px',
+                      color: 'var(--text)',
+                      fontSize: '13px',
+                      outline: 'none'
+                    }}
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Inserisci l'URL di un proxy CORS qualora la chiamata diretta fallisca per policy del browser.</span>
+                </div>
+
+                <Btn active onClick={() => setSettingsOpen(false)}>💾 Salva Impostazioni</Btn>
+              </div>
+            </Modal>
+          )}
+
+          {/* AGGIORNA VALORI MODAL */}
+          {aggOpen && (
+            <Modal
+              title="Aggiornamento Valori Attuali"
+              onClose={() => setAggOpen(false)}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', gap: '4px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                  {["BPER", "Mediolanum", "Poste"].map(b => {
+                    const countNonCash = titoli.filter(t => t.banca === b && t.asset !== "Liquidità").length;
+                    return (
+                      <Btn
+                        key={b}
+                        active={aggTab === b}
+                        onClick={() => setAggTab(b)}
+                        style={{
+                          activeBg: getTabColor(b),
+                          padding: '6px 12px',
+                          fontSize: '12px'
+                        }}
+                      >
+                        {b} ({countNonCash})
+                      </Btn>
+                    );
+                  })}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '40vh', overflowY: 'auto', paddingRight: '4px' }}>
+                  {titoli
+                    .filter(t => t.banca === aggTab && t.asset !== "Liquidità")
+                    .map(t => {
+                      const currentVal = aggValues[t.id]?.valore ?? t.valore;
+                      const currentQuote = aggValues[t.id]?.quote ?? t.quote;
+
+                      return (
+                        <div key={t.id} style={{
+                          border: '1px solid var(--border)',
+                          borderRadius: '8px',
+                          padding: '12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px'
+                        }}>
+                          <div style={{ fontSize: '13px', fontWeight: '700' }}>{t.nome}</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: t.quote !== null ? '1fr 1fr' : '1fr', gap: '10px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <label style={{ fontSize: '11px', color: 'var(--muted)' }}>Valore Attuale (€)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={currentVal}
+                                onChange={(e) => {
+                                  setAggValues({
+                                    ...aggValues,
+                                    [t.id]: { ...aggValues[t.id], valore: e.target.value }
+                                  });
+                                }}
+                                style={{
+                                  backgroundColor: 'var(--bg)',
+                                  border: '1px solid var(--border)',
+                                  borderRadius: '6px',
+                                  padding: '6px 10px',
+                                  color: 'var(--text)',
+                                  fontSize: '12px'
+                                }}
+                              />
+                            </div>
+                            
+                            {t.quote !== null && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ fontSize: '11px', color: 'var(--muted)' }}>Quote Attuali</label>
+                                <input
+                                  type="number"
+                                  step="0.001"
+                                  value={currentQuote}
+                                  onChange={(e) => {
+                                    setAggValues({
+                                      ...aggValues,
+                                      [t.id]: { ...aggValues[t.id], quote: e.target.value }
+                                    });
+                                  }}
+                                  style={{
+                                    backgroundColor: 'var(--bg)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '6px',
+                                    padding: '6px 10px',
+                                    color: 'var(--text)',
+                                    fontSize: '12px'
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                  <Btn active style={{ flex: 1 }} onClick={handleSaveAllValori}>💾 Salva tutto</Btn>
+                  <Btn danger style={{ flex: 1 }} onClick={handleResetOriginali}>↩️ Ripristina originali</Btn>
+                </div>
+              </div>
+            </Modal>
+          )}
+
+        </div>
+      );
+    }
+
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    root.render(<App />);
+  </script>
+</body>
+</html>
