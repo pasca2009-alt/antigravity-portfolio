@@ -3,11 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<<<<<<< HEAD
-  <title>Rigenera Dashboard Investimenti</title>
-=======
   <title>Analisi Portafoglio by Pasquale Cataldo</title>
->>>>>>> 0388601 (caricamento file index con API Key modificata)
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -234,7 +230,7 @@
       };
     };
 
-    // --- AGENTS DEFINITION (Copied from structural modules) ---
+    // --- AGENTS DEFINITION ---
     
     // FinanceAgent Object
     const FinanceAgent = {
@@ -246,7 +242,6 @@
 
         const nome = item.nome || "";
         
-        // Check for sub-totals or totals
         if (
           nome.toLowerCase().includes("totale") || 
           nome.toLowerCase().includes("subtotale") || 
@@ -256,19 +251,16 @@
           return false;
         }
 
-        // Check if value is null
         if (item.valore === undefined || item.valore === null) {
           logs.push(`⚠️ Ho escluso il record "${nome}" (ID: ${item.id}) perché privo di valore attuale.`);
           return false;
         }
 
-        // Check if value is zero (reimbursed)
         if (parseFloat(item.valore) === 0) {
           logs.push(`ℹ️ Ho escluso la riga "${nome}" (ID: ${item.id}) perché il valore attuale è zero (rimborsato/dismesso).`);
           return false;
         }
 
-        // Check numeric validity
         if (isNaN(item.investito) || isNaN(item.valore)) {
           logs.push(`⚠️ Ho escluso il record "${nome}" (ID: ${item.id}) per ambiguità nei dati numerici (NaN).`);
           return false;
@@ -802,20 +794,16 @@
       const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
       
       const [tab, setTab] = useState("Tutti");
-      const [sortKey, setSortKey] = useState("pct"); // pct, plus, valore, nome
+      const [sortKey, setSortKey] = useState("pct");
       const [searchQuery, setSearchQuery] = useState("");
 
-<<<<<<< HEAD
-      const [apiKey, setApiKey] = useState(() => localStorage.getItem("anthropic_api_key") || "");
-=======
       const [apiKey, setApiKey] = useState(() => localStorage.getItem("google_api_key") || "");
->>>>>>> 0388601 (caricamento file index con API Key modificata)
       const [proxyUrl, setProxyUrl] = useState(() => localStorage.getItem("cors_proxy") || "");
 
       // Modali & UI
-      const [modal, setModal] = useState(null); // { title, content }
+      const [modal, setModal] = useState(null);
       const [aiLoading, setAiLoading] = useState(false);
-      const [calcLoading, setCalcLoading] = useState(false); // FinanceAgent math spinner
+      const [calcLoading, setCalcLoading] = useState(false);
       const [prelievoOpen, setPrelievoOpen] = useState(false);
       const [prelievoImporto, setPrelievoImporto] = useState("");
       const [prelievoData, setPrelievoData] = useState("");
@@ -828,7 +816,7 @@
 
       const [aggOpen, setAggOpen] = useState(false);
       const [aggTab, setAggTab] = useState("BPER");
-      const [aggValues, setAggValues] = useState({}); // { id: { valore, quote } }
+      const [aggValues, setAggValues] = useState({});
 
       const [settingsOpen, setSettingsOpen] = useState(false);
       const [agentLogOpen, setAgentLogOpen] = useState(false);
@@ -847,11 +835,6 @@
       }, [theme]);
 
       // --- COMPUTED DATA (FinanceAgent processing) ---
-<<<<<<< HEAD
-      // We pass the React state `titoli` to `FinanceAgent.process`
-      // This recalculates all fields and builds the math calculation audit log.
-=======
->>>>>>> 0388601 (caricamento file index con API Key modificata)
       const { processedTitoli, agentLogs, agentErrors } = useMemo(() => {
         const result = FinanceAgent.process(titoli);
         return {
@@ -1047,17 +1030,10 @@ Analisi richiesta:
 
         try {
           if (!apiKey) {
-<<<<<<< HEAD
-            throw new Error("API Key mancante nelle impostazioni. Puoi usare la modalità DEMO cliccando sul bottone qui sotto.");
-          }
-
-          const responseText = await callAnthropic(prompt, system, maxTokens);
-=======
             throw new Error("API Key Google Gemini mancante nelle impostazioni. Puoi usare la modalità DEMO cliccando sul bottone qui sotto per testare l'interfaccia.");
           }
 
           const responseText = await callGoogleGemini(prompt, system, maxTokens);
->>>>>>> 0388601 (caricamento file index con API Key modificata)
           setModal({ title, content: responseText });
         } catch (err) {
           console.error(err);
@@ -1075,28 +1051,15 @@ Analisi richiesta:
         }
       };
 
-<<<<<<< HEAD
-      const callAnthropic = async (prompt, system, maxTokens) => {
-        let url = "https://api.anthropic.com/v1/messages";
-=======
       // Calls Google Gemini API
       const callGoogleGemini = async (prompt, system, maxTokens) => {
-        // Defaulting to gemini-1.5-pro for complex financial reasoning
         const modelName = "gemini-1.5-pro"; 
         let url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
->>>>>>> 0388601 (caricamento file index con API Key modificata)
         if (proxyUrl) {
           url = proxyUrl + url;
         }
 
         const body = {
-<<<<<<< HEAD
-          model: "claude-sonnet-4-20250514",
-          max_tokens: maxTokens,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
-          messages: [{ role: "user", content: prompt }],
-          system: system
-=======
           contents: [{
             parts: [{ text: prompt }]
           }],
@@ -1107,36 +1070,18 @@ Analisi richiesta:
           systemInstruction: {
             parts: [{ text: system }]
           }
->>>>>>> 0388601 (caricamento file index con API Key modificata)
         };
 
         const res = await fetch(url, {
           method: "POST",
           headers: {
-<<<<<<< HEAD
-            "Content-Type": "application/json",
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
-            "dangerously-allow-browser": "true"
-=======
             "Content-Type": "application/json"
->>>>>>> 0388601 (caricamento file index con API Key modificata)
           },
           body: JSON.stringify(body)
         });
 
         if (!res.ok) {
           const errText = await res.text();
-<<<<<<< HEAD
-          throw new Error(`Errore API (${res.status}): ${errText}`);
-        }
-
-        const data = await res.json();
-        return data.content
-          .filter(b => b.type === "text")
-          .map(b => b.text)
-          .join("\n");
-=======
           throw new Error(`Errore API Google Gemini (${res.status}): ${errText}`);
         }
 
@@ -1146,7 +1091,6 @@ Analisi richiesta:
         } else {
           throw new Error("Risposta Google Gemini vuota o bloccata dai filtri di sicurezza.");
         }
->>>>>>> 0388601 (caricamento file index con API Key modificata)
       };
 
       const handleGenerateDemo = (titleTarget, promptTarget) => {
@@ -1210,11 +1154,7 @@ Per recuperare l'importo di € ${prelievoImporto} entro la data ${prelievoData 
    - Capitale Lordo Riscattato: € 25.000
    - Stima Imposte capital gain (26% medio): circa € 620
    - Netto stimato in liquidazione: € 24.380
-<<<<<<< HEAD
    - L'asset allocation rimane bilanciata, mantenendo intatta la riserva di liquidità su conto corrente.
-=======
-   - L'asset allocation rimane bilanciata, maintaining intatta la riserva di liquidità su conto corrente.
->>>>>>> 0388601 (caricamento file index con API Key modificata)
 
 Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consulente per operare.`;
         } 
@@ -1260,7 +1200,7 @@ Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consul
       };
 
       const handleSaveAllValori = () => {
-        setCalcLoading(true); // show calculations spinner loader
+        setCalcLoading(true);
         setTimeout(() => {
           const nuoviTitoli = titoli.map(t => {
             const draft = aggValues[t.id];
@@ -1289,7 +1229,7 @@ Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consul
 
       const handleResetOriginali = () => {
         if (confirm("Sei sicuro di voler ripristinare i dati originali del portafoglio? Tutte le modifiche andranno perse.")) {
-          setCalcLoading(true); // show calculations spinner loader
+          setCalcLoading(true);
           setTimeout(() => {
             const originaliProcessati = BASE_TITOLI.map(calcTitolo);
             setTitoli(originaliProcessati);
@@ -1426,13 +1366,6 @@ Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consul
             paddingBottom: '20px'
           }}>
             <div>
-<<<<<<< HEAD
-              <h1 style={{ fontSize: '28px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
-                Rigenera Dashboard
-              </h1>
-              <p style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span>Analisi Portafoglio Investimenti</span>
-=======
               <h1 style={{ fontSize: '28px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--text)', lineHeight: '1.2' }}>
                 Analisi Portafoglio
                 <br />
@@ -1442,7 +1375,6 @@ Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consul
               </h1>
               <p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span>Dashboard Investimenti Maggio 2026</span>
->>>>>>> 0388601 (caricamento file index con API Key modificata)
                 {lastUpdate && (
                   <span style={{
                     backgroundColor: 'rgba(78, 205, 196, 0.15)',
@@ -1699,7 +1631,6 @@ Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consul
                     <div
                       key={t.id}
                       style={{
-                        backgroundColor: 'var(--card)',
                         border: isLoss ? '1px solid var(--red)' : '1px solid var(--border)',
                         backgroundColor: isLoss ? 'rgba(248, 113, 113, 0.03)' : 'var(--card)',
                         borderRadius: '12px',
@@ -1759,7 +1690,7 @@ Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consul
                 })}
               </div>
             ) : (
-              // DESKTOP TABLE VIEW (Rendered by UIAgent framework method)
+              // DESKTOP TABLE VIEW
               UIAgent.renderTable({ filteredTitoli, fmtEUR, badges, handleAICall })
             )}
           </section>
@@ -1808,7 +1739,7 @@ Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consul
             )}
           </section>
 
-          {/* LOADER OVERLAYS (Rendered by UIAgent showLoader method) */}
+          {/* LOADER OVERLAYS */}
           {UIAgent.showLoader(aiLoading, "Elaborazione AI in corso con Web Search...")}
           {UIAgent.showLoader(calcLoading, "FinanceAgent: Ricalcolo quote e verifica integrità in corso...")}
 
@@ -1827,16 +1758,6 @@ Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consul
                   </div>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-<<<<<<< HEAD
-                    <label style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>Configura Chiave API Anthropic</label>
-                    <input
-                      type="password"
-                      placeholder="sk-ant-..."
-                      value={apiKey}
-                      onChange={(e) => {
-                        setApiKey(e.target.value);
-                        localStorage.setItem("anthropic_api_key", e.target.value);
-=======
                     <label style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>Configura Google API Key (Gemini)</label>
                     <input
                       type="password"
@@ -1845,7 +1766,6 @@ Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consul
                       onChange={(e) => {
                         setApiKey(e.target.value);
                         localStorage.setItem("google_api_key", e.target.value);
->>>>>>> 0388601 (caricamento file index con API Key modificata)
                       }}
                       style={{
                         backgroundColor: 'var(--bg)',
@@ -2011,16 +1931,6 @@ Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consul
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-<<<<<<< HEAD
-                  <label style={{ fontSize: '13px', fontWeight: '600' }}>Anthropic API Key</label>
-                  <input
-                    type="password"
-                    placeholder="sk-ant-..."
-                    value={apiKey}
-                    onChange={(e) => {
-                      setApiKey(e.target.value);
-                      localStorage.setItem("anthropic_api_key", e.target.value);
-=======
                   <label style={{ fontSize: '13px', fontWeight: '600' }}>Google API Key (Gemini)</label>
                   <input
                     type="password"
@@ -2029,7 +1939,6 @@ Disclaimer: Trattasi di pura simulazione didattica. Rivolgersi al proprio consul
                     onChange={(e) => {
                       setApiKey(e.target.value);
                       localStorage.setItem("google_api_key", e.target.value);
->>>>>>> 0388601 (caricamento file index con API Key modificata)
                     }}
                     style={{
                       backgroundColor: 'var(--bg)',
